@@ -1,0 +1,6 @@
+{
+  "name": "ShivAI",
+  "description": "Personal AI assistant and fitness tracker supporting Marathi, Hindi, and English with voice and step analytics",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
