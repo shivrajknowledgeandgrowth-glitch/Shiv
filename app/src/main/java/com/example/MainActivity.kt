@@ -33,7 +33,7 @@ import com.example.ui.components.ShivAiTopBar
 import com.example.ui.components.VoiceCommandsModal
 import com.example.ui.screens.FitnessScreen
 import com.example.ui.screens.HomeScreen
-import com.example.ui.screens.InformationScreen
+import com.example.ui.screens.WorkoutScreen
 import com.example.ui.screens.LoginScreen
 import com.example.ui.screens.SettingScreen
 import com.example.ui.theme.ShivAiTheme
@@ -75,15 +75,63 @@ fun ShivAiApp(viewModel: ShivAiViewModel) {
     val todaySteps by viewModel.todaySteps.collectAsState()
     val todayCalories by viewModel.todayCalories.collectAsState()
     val monthHistory by viewModel.monthHistory.collectAsState()
+    val sensorStatus by viewModel.sensorStatus.collectAsState()
     val isSpeaking by viewModel.ttsHelper.isSpeaking.collectAsState()
+
+    // Activity Recognition permission launcher for Android 10+ hardware step sensors
+    val activityRecognitionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { _ -> }
+
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+            val hasPerm = ContextCompat.checkSelfPermission(
+                context,
+                android.Manifest.permission.ACTIVITY_RECOGNITION
+            ) == PackageManager.PERMISSION_GRANTED
+            if (!hasPerm) {
+                activityRecognitionLauncher.launch(android.Manifest.permission.ACTIVITY_RECOGNITION)
+            }
+        }
+    }
+
+    // Fallback system speech recognition launcher
+    val speechIntentLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == android.app.Activity.RESULT_OK) {
+            val spokenMatches = result.data?.getStringArrayListExtra(android.speech.RecognizerIntent.EXTRA_RESULTS)
+            val recognizedText = spokenMatches?.firstOrNull()
+            if (!recognizedText.isNullOrBlank()) {
+                viewModel.sendMessage(recognizedText)
+            }
+        }
+    }
+
+    fun launchSystemSpeechRecognizer() {
+        try {
+            val intent = android.content.Intent(android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE_MODEL, android.speech.RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE, profile.language.code)
+                putExtra(android.speech.RecognizerIntent.EXTRA_PROMPT, "ShivAI ला बोला...")
+            }
+            speechIntentLauncher.launch(intent)
+        } catch (e: Exception) {
+            Toast.makeText(context, "व्हॉइस इनपुट सुरू करता आले नाही. कृपया खाली प्रश्न टाईप करा.", Toast.LENGTH_SHORT).show()
+        }
+    }
 
     // Microphone audio permission launcher
     val audioPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         if (isGranted) {
-            viewModel.startVoiceInput { error ->
-                Toast.makeText(context, error, Toast.LENGTH_SHORT).show()
+            if (viewModel.speechHelper.isAvailable()) {
+                viewModel.startVoiceInput {
+                    launchSystemSpeechRecognizer()
+                }
+            } else {
+                launchSystemSpeechRecognizer()
             }
         } else {
             Toast.makeText(
@@ -101,8 +149,12 @@ fun ShivAiApp(viewModel: ShivAiViewModel) {
         ) == PackageManager.PERMISSION_GRANTED
 
         if (hasPermission) {
-            viewModel.startVoiceInput { error ->
-                Toast.makeText(context, error, Toast.LENGTH_SHORT).show()
+            if (viewModel.speechHelper.isAvailable()) {
+                viewModel.startVoiceInput {
+                    launchSystemSpeechRecognizer()
+                }
+            } else {
+                launchSystemSpeechRecognizer()
             }
         } else {
             audioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
@@ -171,11 +223,15 @@ fun ShivAiApp(viewModel: ShivAiViewModel) {
                                 todayCalories = todayCalories,
                                 dailyGoal = profile.dailyGoal,
                                 monthHistory = monthHistory,
-                                onAddSteps = { amount -> viewModel.addSteps(amount) }
+                                onAddSteps = { amount -> viewModel.addSteps(amount) },
+                                onResetSteps = { viewModel.resetTodaySteps() },
+                                sensorStatus = sensorStatus
                             )
                         }
-                        AppTab.INFORMATION -> {
-                            InformationScreen(profile = profile)
+                        AppTab.WORKOUT -> {
+                            WorkoutScreen(
+                                onSpeakText = { text -> viewModel.speakText(text) }
+                            )
                         }
                         AppTab.SETTING -> {
                             SettingScreen(

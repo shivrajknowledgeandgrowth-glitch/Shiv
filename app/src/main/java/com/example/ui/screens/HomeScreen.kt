@@ -371,22 +371,31 @@ fun HomeScreen(
                 ) {
                     val suggestions = when (profile.language.code) {
                         "hi-IN" -> listOf(
-                            "आज का फिटनेस टिप दो",
-                            "ShivAI तुम क्या कर सकते हो?",
-                            "पैदल चलने के फायदे बताओ",
-                            "मेरा स्टेप गोल क्या है?"
+                            "🚶 आज कितने कदम चले?",
+                            "🏋️ चेस्ट वर्कआउट कैसे करें?",
+                            "🔥 कितनी कैलोरी बर्न हुई?",
+                            "🎯 मेरा स्टेप गोल क्या है?",
+                            "💪 आज का फिटनेस टिप दो",
+                            "➕ ५०० कदम जोड़ें",
+                            "ShivAI तुम कौन हो?"
                         )
                         "en-US" -> listOf(
-                            "Give me a fitness tip",
-                            "What can you do ShivAI?",
-                            "Benefits of 10,000 steps",
-                            "Motivate me for a workout"
+                            "🚶 How many steps today?",
+                            "🏋️ How to do chest workout?",
+                            "🔥 Calories burned today?",
+                            "🎯 What is my daily goal?",
+                            "💪 Give me a fitness tip",
+                            "➕ Add 500 steps",
+                            "Who are you ShivAI?"
                         )
                         else -> listOf(
-                            "आजचा फिटनेस सल्ला द्या",
-                            "ShivAI तू काय करू शकतोस?",
-                            "पावले चालण्याचे फायदे सांगा",
-                            "व्यायामासाठी प्रेरणा द्या"
+                            "🚶 आज किती पावले चाललो?",
+                            "🏋️ चेस्ट वर्कआउट कसा करायचा?",
+                            "🔥 आज किती कॅलरीज जळाल्या?",
+                            "🎯 माझे दैनिक ध्येय काय आहे?",
+                            "💪 आजचा फिटनेस सल्ला द्या",
+                            "➕ ५०० पावले जोडा",
+                            "ShivAI तू कोण आहेस?"
                         )
                     }
 

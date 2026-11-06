@@ -206,6 +206,18 @@ fun VoiceCommandsModal(
                     description = "हृदय व स्नायूंसाठी चालण्याचे महत्त्व."
                 ),
                 VoiceCommandItem(
+                    category = "🏋️ वर्कआउट व व्यायाम",
+                    commandText = "छातीचा (Chest) व्यायाम कसा करावा?",
+                    englishHint = "Chest workout guide",
+                    description = "डंबेल आणि पुश-अप्सचे ३-स्टेप सविस्तर मार्गदर्शन."
+                ),
+                VoiceCommandItem(
+                    category = "🏋️ वर्कआउट व व्यायाम",
+                    commandText = "विना-डंबेल व्यायाम दाखवा",
+                    englishHint = "Bodyweight workouts without dumbbells",
+                    description = "घरच्या घरी साहित्याशिवाय करावयाचे व्यायाम."
+                ),
+                VoiceCommandItem(
                     category = "🤖 ShivAI असिस्टंट",
                     commandText = "ShivAI तू काय करू शकतोस?",
                     englishHint = "What can you do ShivAI?",

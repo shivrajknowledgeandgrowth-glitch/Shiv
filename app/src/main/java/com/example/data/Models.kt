@@ -54,6 +54,6 @@ sealed interface AiUiStatus {
 enum class AppTab(val title: String, val iconText: String) {
     HOME("Home", "🏠"),
     FITNESS("Fitness", "🏃"),
-    INFORMATION("Information", "ℹ️"),
+    WORKOUT("Workout", "🏋️"),
     SETTING("Setting", "⚙️")
 }

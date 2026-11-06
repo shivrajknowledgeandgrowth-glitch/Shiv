@@ -72,6 +72,7 @@ import com.example.ui.theme.SlateSurfaceVariant
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
 import java.text.NumberFormat
+import com.example.sensor.SensorStatusInfo
 import java.util.Locale
 
 @Composable
@@ -81,12 +82,14 @@ fun FitnessScreen(
     dailyGoal: Int,
     monthHistory: List<DayFitnessRecord>,
     onAddSteps: (Int) -> Unit,
+    onResetSteps: () -> Unit = {},
+    sensorStatus: SensorStatusInfo? = null,
     modifier: Modifier = Modifier
 ) {
     val numberFormat = remember { NumberFormat.getNumberInstance(Locale.getDefault()) }
     val progress = (todaySteps.toFloat() / dailyGoal.coerceAtLeast(1)).coerceIn(0f, 1f)
-    val distanceKm = (todaySteps * 0.00075f)
-    val activeMinutes = (todaySteps / 100).coerceAtLeast(1)
+    val distanceKm = (todaySteps * 0.00076f)
+    val activeMinutes = if (todaySteps > 0) (todaySteps / 110).coerceAtLeast(1) else 0
     var selectedDayRecord by remember { mutableStateOf<DayFitnessRecord?>(null) }
 
     LazyColumn(
@@ -117,6 +120,70 @@ fun FitnessScreen(
                     color = TextSecondary,
                     fontWeight = FontWeight.Medium
                 )
+            }
+        }
+
+        // 0. LIVE HARDWARE SENSOR STATUS BANNER
+        item {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("fitness_live_sensor_card"),
+                colors = CardDefaults.cardColors(containerColor = SlateSurface.copy(alpha = 0.9f)),
+                shape = RoundedCornerShape(14.dp),
+                border = androidx.compose.foundation.BorderStroke(
+                    1.dp,
+                    if (sensorStatus?.isActive == true) FitnessGreen.copy(alpha = 0.5f) else SlateBorder.copy(alpha = 0.4f)
+                )
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        modifier = Modifier.weight(1f),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(10.dp)
+                                .clip(CircleShape)
+                                .background(if (sensorStatus?.isActive == true) FitnessGreen else Color(0xFFF59E0B))
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column {
+                            Text(
+                                text = if (sensorStatus?.isActive == true) "🟢 खरा हार्डवेअर सेन्सर सक्रिय" else "🟡 सेन्सर सज्ज (Standby)",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = TextPrimary
+                            )
+                            Text(
+                                text = "फोन घेऊन चाला, पावले थेट मोजली जात आहेत (${sensorStatus?.mode?.displayName ?: "Motion Sensor"})",
+                                fontSize = 11.sp,
+                                color = CyanPrimary,
+                                maxLines = 1
+                            )
+                        }
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(CyanDark.copy(alpha = 0.4f))
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = "लाईव्ह",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = FitnessGreen
+                        )
+                    }
+                }
             }
         }
 
@@ -282,9 +349,9 @@ fun FitnessScreen(
                     Spacer(modifier = Modifier.height(10.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        listOf(250, 500, 1000).forEach { amount ->
+                        listOf(250, 500, 1000, 2000).forEach { amount ->
                             Button(
                                 onClick = { onAddSteps(amount) },
                                 modifier = Modifier
@@ -299,10 +366,26 @@ fun FitnessScreen(
                             ) {
                                 Text(
                                     text = "+$amount",
-                                    fontSize = 13.sp,
+                                    fontSize = 12.sp,
                                     fontWeight = FontWeight.Bold
                                 )
                             }
+                        }
+
+                        OutlinedButton(
+                            onClick = onResetSteps,
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(38.dp)
+                                .testTag("fitness_reset_steps"),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Text(
+                                text = "रीसेट",
+                                fontSize = 11.sp,
+                                color = TextSecondary,
+                                fontWeight = FontWeight.SemiBold
+                            )
                         }
                     }
                 }
