@@ -15,7 +15,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [34])
+@Config(sdk = [36])
 class ExampleRobolectricTest {
 
     @Test
@@ -115,6 +115,22 @@ class ExampleRobolectricTest {
 
         val tabs = com.example.data.AppTab.entries
         assertTrue(tabs.contains(com.example.data.AppTab.WORKOUT))
+    }
+
+    @Test
+    fun `verify StepTrackingService companion and 24h state management`() {
+        com.example.service.StepTrackingService.updateLiveStepsManually(1234)
+        assertEquals(1234, com.example.service.StepTrackingService.liveSteps.value)
+        assertEquals((1234 * 0.04).toInt(), com.example.service.StepTrackingService.liveCalories.value)
+    }
+
+    @Test
+    fun `verify PhoneControlManager instantiation and settings shortcuts`() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val phoneManager = com.example.util.PhoneControlManager(context)
+        assertNotNull(phoneManager)
+        val shortcuts = com.example.util.SettingsShortcut.entries
+        assertTrue(shortcuts.size >= 5)
     }
 }
 

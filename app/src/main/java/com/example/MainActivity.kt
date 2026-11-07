@@ -2,6 +2,7 @@ package com.example
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -19,6 +20,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -28,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import com.example.data.AppTab
+import com.example.service.StepTrackingService
 import com.example.ui.components.ShivAiBottomBar
 import com.example.ui.components.ShivAiTopBar
 import com.example.ui.components.VoiceCommandsModal
@@ -53,6 +56,9 @@ class MainActivity : ComponentActivity() {
 
         enableEdgeToEdge()
 
+        // Guarantee 24/7 background foreground step tracking service is active
+        StepTrackingService.start(this)
+
         setContent {
             ShivAiTheme {
                 ShivAiApp(viewModel = viewModel)
@@ -77,21 +83,41 @@ fun ShivAiApp(viewModel: ShivAiViewModel) {
     val monthHistory by viewModel.monthHistory.collectAsState()
     val sensorStatus by viewModel.sensorStatus.collectAsState()
     val isSpeaking by viewModel.ttsHelper.isSpeaking.collectAsState()
+    val isTorchOn by viewModel.isTorchOn.collectAsState()
 
-    // Activity Recognition permission launcher for Android 10+ hardware step sensors
-    val activityRecognitionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission()
-    ) { _ -> }
+    // Permissions launcher for 24/7 background tracking (Notification & Activity Recognition)
+    val permissionsLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { _ ->
+        // Restart service to ensure notification is bound after permission grant
+        StepTrackingService.start(context)
+    }
 
-    androidx.compose.runtime.LaunchedEffect(Unit) {
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-            val hasPerm = ContextCompat.checkSelfPermission(
+    LaunchedEffect(Unit) {
+        val permissionsToRequest = mutableListOf<String>()
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val hasActivityRec = ContextCompat.checkSelfPermission(
                 context,
-                android.Manifest.permission.ACTIVITY_RECOGNITION
+                Manifest.permission.ACTIVITY_RECOGNITION
             ) == PackageManager.PERMISSION_GRANTED
-            if (!hasPerm) {
-                activityRecognitionLauncher.launch(android.Manifest.permission.ACTIVITY_RECOGNITION)
+            if (!hasActivityRec) {
+                permissionsToRequest.add(Manifest.permission.ACTIVITY_RECOGNITION)
             }
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val hasNotification = ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
+            if (!hasNotification) {
+                permissionsToRequest.add(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+
+        if (permissionsToRequest.isNotEmpty()) {
+            permissionsLauncher.launch(permissionsToRequest.toTypedArray())
         }
     }
 
@@ -208,13 +234,34 @@ fun ShivAiApp(viewModel: ShivAiViewModel) {
                                 statusMessage = statusMessage,
                                 chatHistory = chatHistory,
                                 isSpeaking = isSpeaking,
+                                isTorchOn = isTorchOn,
                                 onToggleAi = { viewModel.toggleAi() },
                                 onStartMic = { requestVoiceInput() },
                                 onStopMic = { viewModel.stopVoiceInput() },
                                 onSendMessage = { text -> viewModel.sendMessage(text) },
                                 onSpeakMessage = { text -> viewModel.speakText(text) },
                                 onStopSpeaking = { viewModel.stopSpeaking() },
-                                onOpenVoiceCommands = { showVoiceCommandsModal = true }
+                                onOpenVoiceCommands = { showVoiceCommandsModal = true },
+                                onToggleTorch = { viewModel.phoneControlManager.toggleTorch() },
+                                onRaiseVolume = {
+                                    val msg = viewModel.phoneControlManager.raiseVolume()
+                                    Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                                },
+                                onLowerVolume = {
+                                    val msg = viewModel.phoneControlManager.lowerVolume()
+                                    Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                                },
+                                onMuteVolume = {
+                                    val msg = viewModel.phoneControlManager.muteVolume()
+                                    Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                                },
+                                onOpenDialer = { viewModel.phoneControlManager.openDialer() },
+                                onOpenWhatsApp = { viewModel.phoneControlManager.openWhatsApp() },
+                                onOpenAlarm = { viewModel.phoneControlManager.openAlarmClock() },
+                                onOpenCamera = { viewModel.phoneControlManager.openCamera() },
+                                onOpenSettings = { viewModel.phoneControlManager.openSettings() },
+                                onOpenMaps = { viewModel.phoneControlManager.openMaps() },
+                                onOpenYouTube = { viewModel.phoneControlManager.openYouTube() }
                             )
                         }
                         AppTab.FITNESS -> {

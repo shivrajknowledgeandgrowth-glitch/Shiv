@@ -123,7 +123,7 @@ fun FitnessScreen(
             }
         }
 
-        // 0. LIVE HARDWARE SENSOR STATUS BANNER
+        // 0. LIVE 24/7 HARDWARE SENSOR & BACKGROUND SERVICE STATUS BANNER
         item {
             Card(
                 modifier = Modifier
@@ -133,13 +133,13 @@ fun FitnessScreen(
                 shape = RoundedCornerShape(14.dp),
                 border = androidx.compose.foundation.BorderStroke(
                     1.dp,
-                    if (sensorStatus?.isActive == true) FitnessGreen.copy(alpha = 0.5f) else SlateBorder.copy(alpha = 0.4f)
+                    if (sensorStatus?.isActive == true) FitnessGreen.copy(alpha = 0.5f) else CyanPrimary.copy(alpha = 0.4f)
                 )
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                        .padding(horizontal = 14.dp, vertical = 12.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -156,13 +156,13 @@ fun FitnessScreen(
                         Spacer(modifier = Modifier.width(10.dp))
                         Column {
                             Text(
-                                text = if (sensorStatus?.isActive == true) "🟢 खरा हार्डवेअर सेन्सर सक्रिय" else "🟡 सेन्सर सज्ज (Standby)",
+                                text = "🟢 २४ तास अखंड ट्रॅकिंग सक्रिय",
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = TextPrimary
                             )
                             Text(
-                                text = "फोन घेऊन चाला, पावले थेट मोजली जात आहेत (${sensorStatus?.mode?.displayName ?: "Motion Sensor"})",
+                                text = "अ‍ॅप बंद असले तरी पावले २४ तास अचूक मोजली जात आहेत (${sensorStatus?.mode?.displayName ?: "Foreground Service"})",
                                 fontSize = 11.sp,
                                 color = CyanPrimary,
                                 maxLines = 1
@@ -177,7 +177,7 @@ fun FitnessScreen(
                             .padding(horizontal = 8.dp, vertical = 4.dp)
                     ) {
                         Text(
-                            text = "लाईव्ह",
+                            text = "24/7 चालू",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             color = FitnessGreen

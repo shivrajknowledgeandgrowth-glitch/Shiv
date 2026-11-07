@@ -87,6 +87,7 @@ fun HomeScreen(
     statusMessage: String,
     chatHistory: List<ChatMessage>,
     isSpeaking: Boolean,
+    isTorchOn: Boolean = false,
     onToggleAi: () -> Unit,
     onStartMic: () -> Unit,
     onStopMic: () -> Unit,
@@ -94,6 +95,17 @@ fun HomeScreen(
     onSpeakMessage: (String) -> Unit,
     onStopSpeaking: () -> Unit,
     onOpenVoiceCommands: () -> Unit,
+    onToggleTorch: () -> Unit = {},
+    onRaiseVolume: () -> Unit = {},
+    onLowerVolume: () -> Unit = {},
+    onMuteVolume: () -> Unit = {},
+    onOpenDialer: () -> Unit = {},
+    onOpenWhatsApp: () -> Unit = {},
+    onOpenAlarm: () -> Unit = {},
+    onOpenCamera: () -> Unit = {},
+    onOpenSettings: () -> Unit = {},
+    onOpenMaps: () -> Unit = {},
+    onOpenYouTube: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var textInput by remember { mutableStateOf("") }
@@ -126,7 +138,7 @@ fun HomeScreen(
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // 1. AI Status Toggle Container (matching HTML .switch-container)
+        // 1. AI Status Toggle Container
         item {
             Card(
                 modifier = Modifier
@@ -153,7 +165,7 @@ fun HomeScreen(
                             color = TextPrimary
                         )
                         Text(
-                            text = if (profile.isAiEnabled) "AI सध्या चालू आहे" else "AI बंद आहे",
+                            text = if (profile.isAiEnabled) "AI सध्या चालू आहे (व्हॉइस & कंट्रोल्स)" else "AI बंद आहे",
                             fontSize = 12.sp,
                             color = if (profile.isAiEnabled) FitnessGreen else TextSecondary,
                             modifier = Modifier.testTag("home_ai_status_label")
@@ -175,7 +187,143 @@ fun HomeScreen(
             }
         }
 
-        // Voice Commands Info Guide Banner
+        // 2. MOBILE CONTROL CENTER (मोबाईल नियंत्रण केंद्र)
+        item {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("home_mobile_control_center_card"),
+                colors = CardDefaults.cardColors(
+                    containerColor = SlateSurface.copy(alpha = 0.95f)
+                ),
+                shape = RoundedCornerShape(16.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, CyanPrimary.copy(alpha = 0.4f))
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(14.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(text = "📱", fontSize = 18.sp)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column {
+                                Text(
+                                    text = "मोबाईल नियंत्रण केंद्र (Phone Controls)",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = TextPrimary
+                                )
+                                Text(
+                                    text = "१-टॅप किंवा आवाजाने फोन चालवा",
+                                    fontSize = 11.sp,
+                                    color = CyanPrimary
+                                )
+                            }
+                        }
+
+                        // Torch status pill indicator
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(if (isTorchOn) FitnessGreen.copy(alpha = 0.2f) else SlateSurfaceVariant)
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Text(
+                                text = if (isTorchOn) "🔦 टॉर्च ON" else "🔦 टॉर्च OFF",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isTorchOn) FitnessGreen else TextSecondary
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Quick Action Buttons Grid
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        QuickControlChip(
+                            icon = "🔦",
+                            label = if (isTorchOn) "टॉर्च बंद" else "टॉर्च चालू",
+                            isHighlight = isTorchOn,
+                            onClick = onToggleTorch,
+                            tag = "control_torch_btn"
+                        )
+                        QuickControlChip(
+                            icon = "🔊",
+                            label = "आवाज +",
+                            onClick = onRaiseVolume,
+                            tag = "control_vol_up_btn"
+                        )
+                        QuickControlChip(
+                            icon = "🔉",
+                            label = "आवाज -",
+                            onClick = onLowerVolume,
+                            tag = "control_vol_down_btn"
+                        )
+                        QuickControlChip(
+                            icon = "🔇",
+                            label = "म्युट",
+                            onClick = onMuteVolume,
+                            tag = "control_mute_btn"
+                        )
+                        QuickControlChip(
+                            icon = "📞",
+                            label = "फोन कॉल",
+                            onClick = onOpenDialer,
+                            tag = "control_call_btn"
+                        )
+                        QuickControlChip(
+                            icon = "💬",
+                            label = "WhatsApp",
+                            onClick = onOpenWhatsApp,
+                            tag = "control_whatsapp_btn"
+                        )
+                        QuickControlChip(
+                            icon = "⏰",
+                            label = "अलार्म",
+                            onClick = onOpenAlarm,
+                            tag = "control_alarm_btn"
+                        )
+                        QuickControlChip(
+                            icon = "📷",
+                            label = "कॅमेरा",
+                            onClick = onOpenCamera,
+                            tag = "control_camera_btn"
+                        )
+                        QuickControlChip(
+                            icon = "⚙️",
+                            label = "सेटिंग्ज",
+                            onClick = onOpenSettings,
+                            tag = "control_settings_btn"
+                        )
+                        QuickControlChip(
+                            icon = "🗺️",
+                            label = "नकाशा",
+                            onClick = onOpenMaps,
+                            tag = "control_maps_btn"
+                        )
+                        QuickControlChip(
+                            icon = "📺",
+                            label = "YouTube",
+                            onClick = onOpenYouTube,
+                            tag = "control_youtube_btn"
+                        )
+                    }
+                }
+            }
+        }
+
+        // 3. Voice Commands Info Guide Banner
         item {
             Card(
                 modifier = Modifier
@@ -216,13 +364,13 @@ fun HomeScreen(
                         Spacer(modifier = Modifier.width(10.dp))
                         Column {
                             Text(
-                                text = "उपलब्ध व्हॉइस कमांड्स (Voice Commands)",
+                                text = "व्हॉइस कमांड्स मार्गदर्शक (Voice Commands)",
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = TextPrimary
                             )
                             Text(
-                                text = "उदा. 'आज किती पावले चाललो?', 'ध्येय अपडेट करा'",
+                                text = "उदा. 'टॉर्च चालू करा', 'आवाज वाढवा', 'कॉल करा'",
                                 fontSize = 11.sp,
                                 color = CyanPrimary
                             )
@@ -246,19 +394,18 @@ fun HomeScreen(
             }
         }
 
-        // 2. Mic Box (matching HTML .mic-box with 80px circular button)
+        // 4. Mic Box (Voice input circular button)
         item {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 12.dp),
+                    .padding(vertical = 10.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Box(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier.size(110.dp)
                 ) {
-                    // Outer glowing animated ripple when listening
                     if (aiStatus is AiUiStatus.Listening) {
                         Box(
                             modifier = Modifier
@@ -269,7 +416,6 @@ fun HomeScreen(
                         )
                     }
 
-                    // 80dp Mic Button
                     Box(
                         modifier = Modifier
                             .size(80.dp)
@@ -298,45 +444,44 @@ fun HomeScreen(
                     ) {
                         if (aiStatus is AiUiStatus.Thinking) {
                             CircularProgressIndicator(
-                                color = Color(0xFF0F172A),
                                 modifier = Modifier.size(36.dp),
+                                color = Color.White,
                                 strokeWidth = 3.dp
                             )
                         } else {
                             Icon(
                                 imageVector = if (aiStatus is AiUiStatus.Listening) Icons.Default.Stop else Icons.Default.Mic,
-                                contentDescription = "Microphone",
-                                tint = if (profile.isAiEnabled) Color(0xFF0F172A) else TextSecondary,
-                                modifier = Modifier.size(38.dp)
+                                contentDescription = if (aiStatus is AiUiStatus.Listening) "Stop" else "Speak",
+                                tint = Color.White,
+                                modifier = Modifier.size(36.dp)
                             )
                         }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
                     text = statusMessage,
+                    color = if (aiStatus is AiUiStatus.Error) DangerRed else TextPrimary,
                     fontSize = 14.sp,
-                    color = if (aiStatus is AiUiStatus.Listening) CyanPrimary else TextSecondary,
                     fontWeight = FontWeight.Medium,
                     textAlign = TextAlign.Center,
-                    modifier = Modifier.testTag("home_mic_status_message")
+                    modifier = Modifier.testTag("home_status_message_text")
                 )
 
-                // TTS Speaking status and Stop button
-                AnimatedVisibility(visible = isSpeaking) {
+                if (isSpeaking) {
+                    Spacer(modifier = Modifier.height(4.dp))
                     Row(
-                        verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
-                            .padding(top = 8.dp)
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(SlateSurface)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(CyanDark.copy(alpha = 0.4f))
                             .clickable { onStopSpeaking() }
-                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                            .padding(horizontal = 10.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            Icons.Default.VolumeUp,
+                            imageVector = Icons.Default.VolumeUp,
                             contentDescription = "Speaking",
                             tint = CyanPrimary,
                             modifier = Modifier.size(16.dp)
@@ -353,11 +498,11 @@ fun HomeScreen(
             }
         }
 
-        // 3. Quick Suggestion Prompts
+        // 5. Quick Suggestion Prompts
         item {
             Column(modifier = Modifier.fillMaxWidth()) {
                 Text(
-                    text = "त्वरित प्रश्न (Quick Questions):",
+                    text = "त्वरित प्रश्न व आज्ञा (Quick Prompts):",
                     fontSize = 12.sp,
                     color = TextSecondary,
                     fontWeight = FontWeight.SemiBold,
@@ -371,31 +516,34 @@ fun HomeScreen(
                 ) {
                     val suggestions = when (profile.language.code) {
                         "hi-IN" -> listOf(
+                            "🔦 टॉर्च चालू करो",
+                            "🔊 आवाज बढ़ाओ",
+                            "📞 फोन डायल करो",
+                            "💬 WhatsApp खोलो",
                             "🚶 आज कितने कदम चले?",
                             "🏋️ चेस्ट वर्कआउट कैसे करें?",
                             "🔥 कितनी कैलोरी बर्न हुई?",
-                            "🎯 मेरा स्टेप गोल क्या है?",
-                            "💪 आज का फिटनेस टिप दो",
-                            "➕ ५०० कदम जोड़ें",
-                            "ShivAI तुम कौन हो?"
+                            "➕ ५०० कदम जोड़ें"
                         )
                         "en-US" -> listOf(
+                            "🔦 Turn on flashlight",
+                            "🔊 Volume up",
+                            "📞 Open phone dialer",
+                            "💬 Open WhatsApp",
                             "🚶 How many steps today?",
                             "🏋️ How to do chest workout?",
                             "🔥 Calories burned today?",
-                            "🎯 What is my daily goal?",
-                            "💪 Give me a fitness tip",
-                            "➕ Add 500 steps",
-                            "Who are you ShivAI?"
+                            "➕ Add 500 steps"
                         )
                         else -> listOf(
+                            "🔦 टॉर्च चालू करा",
+                            "🔊 आवाज वाढवा",
+                            "📞 फोन लावा",
+                            "💬 WhatsApp उघडा",
                             "🚶 आज किती पावले चाललो?",
                             "🏋️ चेस्ट वर्कआउट कसा करायचा?",
                             "🔥 आज किती कॅलरीज जळाल्या?",
-                            "🎯 माझे दैनिक ध्येय काय आहे?",
-                            "💪 आजचा फिटनेस सल्ला द्या",
-                            "➕ ५०० पावले जोडा",
-                            "ShivAI तू कोण आहेस?"
+                            "➕ ५०० पावले जोडा"
                         )
                     }
 
@@ -423,7 +571,7 @@ fun HomeScreen(
             }
         }
 
-        // 4. Text Input Bar (Send typed query)
+        // 6. Text Input Bar
         item {
             Row(
                 modifier = Modifier
@@ -436,7 +584,7 @@ fun HomeScreen(
                     onValueChange = { textInput = it },
                     placeholder = {
                         Text(
-                            text = if (profile.isAiEnabled) "मेसेज टाईप करा किंवा बोला..." else "AI सध्या बंद आहे",
+                            text = if (profile.isAiEnabled) "मेसेज किंवा आज्ञा टाईप करा..." else "AI सध्या बंद आहे",
                             fontSize = 14.sp
                         )
                     },
@@ -448,14 +596,13 @@ fun HomeScreen(
                         unfocusedBorderColor = SlateBorder,
                         focusedTextColor = TextPrimary,
                         unfocusedTextColor = TextPrimary,
-                        focusedPlaceholderColor = TextSecondary,
-                        unfocusedPlaceholderColor = TextSecondary,
+                        cursorColor = CyanPrimary,
                         focusedContainerColor = SlateSurface,
                         unfocusedContainerColor = SlateSurface
                     ),
                     modifier = Modifier
                         .weight(1f)
-                        .testTag("home_text_input")
+                        .testTag("home_text_input_field")
                 )
 
                 Spacer(modifier = Modifier.width(8.dp))
@@ -463,22 +610,21 @@ fun HomeScreen(
                 IconButton(
                     onClick = {
                         if (textInput.isNotBlank() && profile.isAiEnabled) {
-                            val msg = textInput
+                            onSendMessage(textInput)
                             textInput = ""
-                            onSendMessage(msg)
                         }
                     },
-                    enabled = profile.isAiEnabled && textInput.isNotBlank(),
-                    modifier = Modifier
-                        .size(50.dp)
-                        .clip(CircleShape)
-                        .background(
-                            if (profile.isAiEnabled && textInput.isNotBlank()) CyanPrimary else SlateBorder
-                        )
-                        .testTag("home_send_button"),
+                    enabled = textInput.isNotBlank() && profile.isAiEnabled,
                     colors = IconButtonDefaults.iconButtonColors(
-                        contentColor = Color(0xFF0F172A)
-                    )
+                        containerColor = CyanPrimary,
+                        contentColor = Color.White,
+                        disabledContainerColor = SlateSurfaceVariant,
+                        disabledContentColor = TextSecondary
+                    ),
+                    modifier = Modifier
+                        .size(52.dp)
+                        .clip(CircleShape)
+                        .testTag("home_send_button")
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.Send,
@@ -489,14 +635,16 @@ fun HomeScreen(
             }
         }
 
-        // 5. Streaming Live Response Banner
+        // 7. Streaming Response Preview Banner
         if (aiStatus is AiUiStatus.Streaming) {
             item {
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("home_streaming_card"),
-                    colors = CardDefaults.cardColors(containerColor = CyanDark.copy(alpha = 0.3f)),
+                    colors = CardDefaults.cardColors(
+                        containerColor = SlateSurface.copy(alpha = 0.95f)
+                    ),
                     shape = RoundedCornerShape(14.dp),
                     border = androidx.compose.foundation.BorderStroke(1.dp, CyanPrimary.copy(alpha = 0.6f))
                 ) {
@@ -527,7 +675,7 @@ fun HomeScreen(
             }
         }
 
-        // 6. Chat History List
+        // 8. Chat History List
         items(chatHistory, key = { it.id }) { message ->
             ChatBubble(
                 message = message,
@@ -537,6 +685,45 @@ fun HomeScreen(
 
         item {
             Spacer(modifier = Modifier.height(20.dp))
+        }
+    }
+}
+
+@Composable
+fun QuickControlChip(
+    icon: String,
+    label: String,
+    isHighlight: Boolean = false,
+    onClick: () -> Unit,
+    tag: String
+) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(
+                if (isHighlight) FitnessGreen.copy(alpha = 0.25f) else SlateSurface.copy(alpha = 0.9f)
+            )
+            .border(
+                1.dp,
+                if (isHighlight) FitnessGreen else SlateBorder.copy(alpha = 0.5f),
+                RoundedCornerShape(12.dp)
+            )
+            .clickable { onClick() }
+            .padding(horizontal = 12.dp, vertical = 8.dp)
+            .testTag(tag),
+        contentAlignment = Alignment.Center
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Text(text = icon, fontSize = 14.sp)
+            Text(
+                text = label,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = if (isHighlight) FitnessGreen else TextPrimary
+            )
         }
     }
 }

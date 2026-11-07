@@ -82,10 +82,46 @@ fun VoiceCommandsModal(
         when (selectedLanguage) {
             AppLanguage.HINDI -> listOf(
                 VoiceCommandItem(
+                    category = "📱 मोबाइल कंट्रोल्स",
+                    commandText = "टॉर्च चालू करो",
+                    englishHint = "Turn on flashlight",
+                    description = "मोबाइल का फ्लैशलाइट/टॉर्च तुरंत चालू करता है।"
+                ),
+                VoiceCommandItem(
+                    category = "📱 मोबाइल कंट्रोल्स",
+                    commandText = "आवाज बढ़ाओ",
+                    englishHint = "Volume up",
+                    description = "मोबाइल का मीडिया वॉल्यूम बढ़ाता है।"
+                ),
+                VoiceCommandItem(
+                    category = "📱 मोबाइल कंट्रोल्स",
+                    commandText = "फोन कॉल लगाओ",
+                    englishHint = "Open phone dialer",
+                    description = "कॉल करने के लिए फोन डायलर खोलता है।"
+                ),
+                VoiceCommandItem(
+                    category = "📱 मोबाइल कंट्रोल्स",
+                    commandText = "WhatsApp खोलो",
+                    englishHint = "Open WhatsApp",
+                    description = "मैसेजिंग के लिए सीधे WhatsApp खोलता है।"
+                ),
+                VoiceCommandItem(
+                    category = "📱 मोबाइल कंट्रोल्स",
+                    commandText = "कैमरा खोलो",
+                    englishHint = "Open camera",
+                    description = "फोटो खींचने के लिए तुरंत कैमरा चालू करता है।"
+                ),
+                VoiceCommandItem(
+                    category = "📱 मोबाइल कंट्रोल्स",
+                    commandText = "अलार्म खोलो",
+                    englishHint = "Open alarm clock",
+                    description = "अलार्म सेट करने के लिए अलार्म क्लॉक खोलता है।"
+                ),
+                VoiceCommandItem(
                     category = "🏃 फिटनेस और स्टेप्स",
                     commandText = "आज मैंने कितने कदम चले हैं?",
                     englishHint = "How many steps today?",
-                    description = "आज के कुल कदमों की गिनती और दैनिक लक्ष्य की जानकारी देता है।"
+                    description = "24 घंटे बैकग्राउंड ट्रैकर से आज के कुल कदम और लक्ष्य की जानकारी।"
                 ),
                 VoiceCommandItem(
                     category = "🏃 फिटनेस और स्टेप्स",
@@ -94,16 +130,16 @@ fun VoiceCommandsModal(
                     description = "आज खर्च की गई कैलोरी का विवरण।"
                 ),
                 VoiceCommandItem(
+                    category = "🏋️ वर्कआउट गाइड",
+                    commandText = "चेस्ट वर्कआउट कैसे करें?",
+                    englishHint = "Chest workout guide",
+                    description = "डंबल और बिना-डंबल 3-स्टेप चेस्ट एक्सरसाइज।"
+                ),
+                VoiceCommandItem(
                     category = "🎯 लक्ष्य और सेटिंग्स",
                     commandText = "मेरा दैनिक लक्ष्य 8,000 कदम कर दो",
                     englishHint = "Update my goal to 8000 steps",
                     description = "दैनिक स्टेप लक्ष्य को अपडेट करने के लिए।"
-                ),
-                VoiceCommandItem(
-                    category = "🎯 लक्ष्य और सेटिंग्स",
-                    commandText = "मेरा डेली गोल क्या है?",
-                    englishHint = "What is my daily goal?",
-                    description = "वर्तमान दैनिक लक्ष्य की जांच करें।"
                 ),
                 VoiceCommandItem(
                     category = "🥗 स्वास्थ्य और डाइट टिप्स",
@@ -112,24 +148,54 @@ fun VoiceCommandsModal(
                     description = "व्यायाम, स्ट्रेचिंग या डाइट के लिए त्वरित सलाह।"
                 ),
                 VoiceCommandItem(
-                    category = "🥗 स्वास्थ्य और डाइट टिप्स",
-                    commandText = "वजन कम करने के लिए क्या खाना चाहिए?",
-                    englishHint = "Healthy weight loss diet tips",
-                    description = "संतुलित और पौष्टिक आहार सुझाव।"
-                ),
-                VoiceCommandItem(
                     category = "🤖 ShivAI असिस्टेंट",
                     commandText = "ShivAI तुम क्या कर सकते हो?",
                     englishHint = "What can you do ShivAI?",
-                    description = "असिस्टेंट की सभी क्षमताओं का परिचय।"
+                    description = "24 घंटे फिटनेस ट्रैकिंग और मोबाइल कंट्रोल्स की क्षमताएं।"
                 )
             )
             AppLanguage.ENGLISH -> listOf(
                 VoiceCommandItem(
+                    category = "📱 Mobile Controls",
+                    commandText = "Turn on flashlight",
+                    englishHint = "Turn on flashlight",
+                    description = "Instantly turns on device torch / flash."
+                ),
+                VoiceCommandItem(
+                    category = "📱 Mobile Controls",
+                    commandText = "Volume up",
+                    englishHint = "Volume up",
+                    description = "Raises mobile media sound volume."
+                ),
+                VoiceCommandItem(
+                    category = "📱 Mobile Controls",
+                    commandText = "Open phone dialer",
+                    englishHint = "Open phone dialer",
+                    description = "Launches the phone calling dialer."
+                ),
+                VoiceCommandItem(
+                    category = "📱 Mobile Controls",
+                    commandText = "Open WhatsApp",
+                    englishHint = "Open WhatsApp",
+                    description = "Directly launches WhatsApp on the phone."
+                ),
+                VoiceCommandItem(
+                    category = "📱 Mobile Controls",
+                    commandText = "Open camera",
+                    englishHint = "Open camera",
+                    description = "Opens the device camera to take photos."
+                ),
+                VoiceCommandItem(
+                    category = "📱 Mobile Controls",
+                    commandText = "Open alarm clock",
+                    englishHint = "Open alarm clock",
+                    description = "Opens the alarm clock to set alarms."
+                ),
+                VoiceCommandItem(
                     category = "🏃 Fitness & Step Tracking",
                     commandText = "How many steps have I walked today?",
                     englishHint = "How many steps today?",
-                    description = "Checks your current step count and goal progress."
+                    description = "Checks 24h background step count and progress."
                 ),
                 VoiceCommandItem(
                     category = "🏃 Fitness & Step Tracking",
@@ -138,16 +204,16 @@ fun VoiceCommandsModal(
                     description = "Reports estimated calories burned so far."
                 ),
                 VoiceCommandItem(
+                    category = "🏋️ Workout Guides",
+                    commandText = "How to do chest workout?",
+                    englishHint = "Chest workout guide",
+                    description = "3-step visual chest exercises with/without dumbbells."
+                ),
+                VoiceCommandItem(
                     category = "🎯 Goals & Preferences",
                     commandText = "Update my goal to 8,000 steps",
                     englishHint = "Update my goal",
                     description = "Modifies your daily fitness target."
-                ),
-                VoiceCommandItem(
-                    category = "🎯 Goals & Preferences",
-                    commandText = "What is my daily goal?",
-                    englishHint = "What is my daily goal?",
-                    description = "Checks your current active daily goal."
                 ),
                 VoiceCommandItem(
                     category = "🥗 Workout & Health Advice",
@@ -156,24 +222,66 @@ fun VoiceCommandsModal(
                     description = "Actionable tips for workouts and hydration."
                 ),
                 VoiceCommandItem(
-                    category = "🥗 Workout & Health Advice",
-                    commandText = "What are the benefits of walking 10,000 steps?",
-                    englishHint = "Benefits of 10k steps",
-                    description = "Cardio, metabolism, and mental health benefits."
-                ),
-                VoiceCommandItem(
                     category = "🤖 Assistant Capabilities",
                     commandText = "What can you do, ShivAI?",
                     englishHint = "What can you do?",
-                    description = "Learn about voice assistance and tracking features."
+                    description = "Learn about 24h tracking, workout guides, and mobile controls."
                 )
             )
             else -> listOf(
                 VoiceCommandItem(
+                    category = "📱 मोबाईल कंट्रोल्स",
+                    commandText = "टॉर्च चालू करा",
+                    englishHint = "Turn on flashlight",
+                    description = "मोबाईलचा फ्लॅशलाईट / टॉर्च लगेच चालू करतो."
+                ),
+                VoiceCommandItem(
+                    category = "📱 मोबाईल कंट्रोल्स",
+                    commandText = "आवाज वाढवा",
+                    englishHint = "Volume up",
+                    description = "मोबाईलचा मीडिया आवाज वाढवतो."
+                ),
+                VoiceCommandItem(
+                    category = "📱 मोबाईल कंट्रोल्स",
+                    commandText = "फोन कॉल लावा",
+                    englishHint = "Open phone dialer",
+                    description = "कॉल करण्यासाठी फोन डायलर स्क्रीन उघडतो."
+                ),
+                VoiceCommandItem(
+                    category = "📱 मोबाईल कंट्रोल्स",
+                    commandText = "WhatsApp उघडा",
+                    englishHint = "Open WhatsApp",
+                    description = "मेसेजिंगसाठी लगेच WhatsApp उघडतो."
+                ),
+                VoiceCommandItem(
+                    category = "📱 मोबाईल कंट्रोल्स",
+                    commandText = "कॅमेरा उघडा",
+                    englishHint = "Open camera",
+                    description = "फोटो काढण्यासाठी थेट कॅमेरा उघडतो."
+                ),
+                VoiceCommandItem(
+                    category = "📱 मोबाईल कंट्रोल्स",
+                    commandText = "अलार्म लावा",
+                    englishHint = "Open alarm clock",
+                    description = "अलार्म सेट करण्यासाठी घड्याळ उघडतो."
+                ),
+                VoiceCommandItem(
+                    category = "📱 मोबाईल कंट्रोल्स",
+                    commandText = "गुगल मॅप्स उघडा",
+                    englishHint = "Open Google Maps",
+                    description = "रस्ता व दिशा पाहण्यासाठी Google Maps उघडतो."
+                ),
+                VoiceCommandItem(
+                    category = "📱 मोबाईल कंट्रोल्स",
+                    commandText = "युट्यूब उघडा",
+                    englishHint = "Open YouTube",
+                    description = "गाणी व व्हिडिओसाठी YouTube उघडतो."
+                ),
+                VoiceCommandItem(
                     category = "🏃 फिटनेस आणि पावले",
                     commandText = "आज मी किती पावले चाललो आहे?",
                     englishHint = "How many steps today?",
-                    description = "आजच्या एकूण पावलांची संख्या आणि प्रगती सांगतो."
+                    description = "२४ तास अखंड ट्रॅकरद्वारे मोजलेली पावले आणि प्रगती सांगतो."
                 ),
                 VoiceCommandItem(
                     category = "🏃 फिटनेस आणि पावले",
@@ -188,24 +296,6 @@ fun VoiceCommandsModal(
                     description = "दैनिक स्टेप टार्गेट अपडेट करण्यासाठी."
                 ),
                 VoiceCommandItem(
-                    category = "🎯 ध्येय आणि सेटिंग्स",
-                    commandText = "माझे दैनंदिन उद्दिष्ट काय आहे?",
-                    englishHint = "What is my daily goal?",
-                    description = "सध्या ठरवलेल्या दैनंदिन उद्दिष्टाची तपासणी."
-                ),
-                VoiceCommandItem(
-                    category = "🥗 आरोग्य व पोषण सल्ला",
-                    commandText = "आजचा फिटनेस सल्ला द्या",
-                    englishHint = "Give me a daily fitness tip",
-                    description = "व्यायाम, स्ट्रेचिंग व आरोग्यासाठी उपयुक्त टिप्स."
-                ),
-                VoiceCommandItem(
-                    category = "🥗 आरोग्य व पोषण सल्ला",
-                    commandText = "दररोज पावले चालण्याचे काय फायदे आहेत?",
-                    englishHint = "Benefits of walking daily",
-                    description = "हृदय व स्नायूंसाठी चालण्याचे महत्त्व."
-                ),
-                VoiceCommandItem(
                     category = "🏋️ वर्कआउट व व्यायाम",
                     commandText = "छातीचा (Chest) व्यायाम कसा करावा?",
                     englishHint = "Chest workout guide",
@@ -218,10 +308,16 @@ fun VoiceCommandsModal(
                     description = "घरच्या घरी साहित्याशिवाय करावयाचे व्यायाम."
                 ),
                 VoiceCommandItem(
+                    category = "🥗 आरोग्य व पोषण सल्ला",
+                    commandText = "आजचा फिटनेस सल्ला द्या",
+                    englishHint = "Give me a daily fitness tip",
+                    description = "व्यायाम, स्ट्रेचिंग व आरोग्यासाठी उपयुक्त टिप्स."
+                ),
+                VoiceCommandItem(
                     category = "🤖 ShivAI असिस्टंट",
                     commandText = "ShivAI तू काय करू शकतोस?",
                     englishHint = "What can you do ShivAI?",
-                    description = "असिस्टंटच्या सर्व वैशिष्ट्यांची माहिती मिळवा."
+                    description = "२४ तास फिटनेस ट्रॅकिंग व मोबाईल कंट्रोल्सची संपूर्ण माहिती."
                 )
             )
         }

@@ -17,6 +17,9 @@ import com.example.data.local.ShivAiDatabase
 import com.example.data.local.StepData
 import com.example.data.local.VoiceInteraction
 import com.example.data.repository.ShivAiRepository
+import com.example.service.StepTrackingService
+import com.example.util.PhoneControlManager
+import com.example.util.SettingsShortcut
 import com.google.firebase.Firebase
 import com.google.firebase.ai.ai
 import kotlinx.coroutines.CancellationException
@@ -30,9 +33,6 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
-import kotlin.random.Random
-
-import com.example.sensor.RealStepTracker
 import com.example.sensor.SensorStatusInfo
 
 private const val TAG = "ShivAiViewModel"
@@ -40,8 +40,11 @@ private const val TAG = "ShivAiViewModel"
 class ShivAiViewModel(application: Application) : AndroidViewModel(application) {
 
     val repository = ShivAiRepository(ShivAiDatabase.getDatabase(application))
-    val stepTracker = RealStepTracker(application)
-    val sensorStatus: StateFlow<SensorStatusInfo> = stepTracker.sensorStatus
+    val phoneControlManager = PhoneControlManager(application)
+    val isTorchOn: StateFlow<Boolean> = phoneControlManager.isTorchOn
+    val isServiceRunning: StateFlow<Boolean> = StepTrackingService.isServiceRunning
+
+    val sensorStatus: StateFlow<SensorStatusInfo?> = StepTrackingService.sensorStatus
     val speechHelper = SpeechRecognizerHelper(application)
     val ttsHelper = TextToSpeechHelper(application)
 
@@ -78,13 +81,13 @@ class ShivAiViewModel(application: Application) : AndroidViewModel(application) 
         listOf(
             ChatMessage(
                 sender = MessageSender.SHIVAI,
-                text = "नमस्कार! मी तुमचा ShivAI असिस्टंट आहे. AI चालू ठेवा आणि प्रश्न विचारा."
+                text = "नमस्कार! मी तुमचा ShivAI असिस्टंट आहे. २४ तास अखंड फिटनेस ट्रॅकिंग आणि मोबाईल कंट्रोल सज्ज आहे."
             )
         )
     )
     val chatHistory: StateFlow<List<ChatMessage>> = _chatHistory.asStateFlow()
 
-    // Real Live Fitness state: Starts with true 0 steps until user walks or sensor records them
+    // Real Live Fitness state synced continuously with 24/7 StepTrackingService
     private val _todaySteps = MutableStateFlow(0)
     val todaySteps: StateFlow<Int> = _todaySteps.asStateFlow()
 
@@ -95,18 +98,24 @@ class ShivAiViewModel(application: Application) : AndroidViewModel(application) 
     val monthHistory: StateFlow<List<DayFitnessRecord>> = _monthHistory.asStateFlow()
 
     init {
+        // Start 24/7 background foreground service immediately
+        StepTrackingService.start(application)
+
         generate30DaysHistory()
         loadPersistedData()
-        startRealSensorTracking()
+        syncWithBackgroundTrackingService()
     }
 
-    private fun startRealSensorTracking() {
-        stepTracker.startTracking { delta ->
-            val newSteps = _todaySteps.value + delta
-            val newCalories = (newSteps * 0.04).toInt()
-            _todaySteps.value = newSteps
-            _todayCalories.value = newCalories
-            persistTodaySteps(newSteps, newCalories)
+    private fun syncWithBackgroundTrackingService() {
+        viewModelScope.launch {
+            StepTrackingService.liveSteps.collect { steps ->
+                _todaySteps.value = steps
+            }
+        }
+        viewModelScope.launch {
+            StepTrackingService.liveCalories.collect { calories ->
+                _todayCalories.value = calories
+            }
         }
     }
 
@@ -122,6 +131,7 @@ class ShivAiViewModel(application: Application) : AndroidViewModel(application) 
             if (savedToday != null) {
                 _todaySteps.value = savedToday.steps
                 _todayCalories.value = savedToday.calories
+                StepTrackingService.updateLiveStepsManually(savedToday.steps)
             }
 
             // Restore conversation history from Room Database if present
@@ -274,7 +284,15 @@ class ShivAiViewModel(application: Application) : AndroidViewModel(application) 
         val newCalories = (newSteps * 0.04).toInt()
         _todaySteps.value = newSteps
         _todayCalories.value = newCalories
+        StepTrackingService.updateLiveStepsManually(newSteps)
         persistTodaySteps(newSteps, newCalories)
+    }
+
+    fun resetTodaySteps() {
+        _todaySteps.value = 0
+        _todayCalories.value = 0
+        StepTrackingService.updateLiveStepsManually(0)
+        persistTodaySteps(0, 0)
     }
 
     fun startVoiceInput(onErrorCallback: (String) -> Unit) {
@@ -308,12 +326,7 @@ class ShivAiViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    fun resetTodaySteps() {
-        _todaySteps.value = 0
-        _todayCalories.value = 0
-        persistTodaySteps(0, 0)
-    }
-
+    // --- SMART MOBILE CONTROLS & LOCAL COMMANDS ---
     private fun handleLocalCommand(query: String, lang: AppLanguage): String? {
         val q = query.lowercase().trim()
         val steps = _todaySteps.value
@@ -321,9 +334,176 @@ class ShivAiViewModel(application: Application) : AndroidViewModel(application) 
         val cal = _todayCalories.value
         val percent = ((steps.toFloat() / goal.coerceAtLeast(1)) * 100).toInt()
 
-        // 1. Add Steps voice/text command
+        // --- 1. TORCH / FLASHLIGHT MOBILE CONTROL ---
+        if (q.contains("टॉर्च चालू") || q.contains("torch on") || q.contains("फ्लॅश चालू") || q.contains("बत्ती लावा") || q.contains("लाइट चालू") || q.contains("लाईट चालू")) {
+            phoneControlManager.toggleTorch(turnOn = true)
+            return when (lang) {
+                AppLanguage.MARATHI -> "होय, मी मोबाईलचा टॉर्च चालू केला आहे! 🔦"
+                AppLanguage.HINDI -> "हाँ, मैंने मोबाइल की टॉर्च चालू कर दी है! 🔦"
+                AppLanguage.ENGLISH -> "I have turned ON the flashlight! 🔦"
+            }
+        }
+        if (q.contains("टॉर्च बंद") || q.contains("torch off") || q.contains("फ्लॅश बंद") || q.contains("बत्ती बंद") || q.contains("लाइट बंद") || q.contains("लाईट बंद")) {
+            phoneControlManager.toggleTorch(turnOn = false)
+            return when (lang) {
+                AppLanguage.MARATHI -> "मी मोबाईलचा टॉर्च बंद केला आहे."
+                AppLanguage.HINDI -> "मैंने मोबाइल की टॉर्च बंद कर दी है।"
+                AppLanguage.ENGLISH -> "I have turned OFF the flashlight."
+            }
+        }
+        if (q.contains("टॉर्च") || q.contains("torch") || q.contains("flashlight")) {
+            val newState = phoneControlManager.toggleTorch()
+            val isNowOn = phoneControlManager.isTorchOn.value
+            return when (lang) {
+                AppLanguage.MARATHI -> if (isNowOn) "टॉर्च चालू केला 🔦" else "टॉर्च बंद केला."
+                AppLanguage.HINDI -> if (isNowOn) "टॉर्च चालू किया गया 🔦" else "टॉर्च बंद किया गया।"
+                AppLanguage.ENGLISH -> if (isNowOn) "Flashlight turned ON 🔦" else "Flashlight turned OFF."
+            }
+        }
+
+        // --- 2. VOLUME CONTROLS ---
+        if (q.contains("आवाज वाढवा") || q.contains("volume up") || q.contains("sound up") || q.contains("आवाज मोठा")) {
+            val res = phoneControlManager.raiseVolume()
+            return when (lang) {
+                AppLanguage.MARATHI -> "मी मोबाईलचा $res"
+                AppLanguage.HINDI -> "मोबाइल का $res"
+                AppLanguage.ENGLISH -> "Raised volume: $res"
+            }
+        }
+        if (q.contains("आवाज कमी") || q.contains("volume down") || q.contains("sound down") || q.contains("आवाज लहान")) {
+            val res = phoneControlManager.lowerVolume()
+            return when (lang) {
+                AppLanguage.MARATHI -> "मी मोबाईलचा $res"
+                AppLanguage.HINDI -> "मोबाइल का $res"
+                AppLanguage.ENGLISH -> "Lowered volume: $res"
+            }
+        }
+        if (q.contains("म्युट") || q.contains("mute") || q.contains("शांत करा") || q.contains("सायलेंट")) {
+            val res = phoneControlManager.muteVolume()
+            return when (lang) {
+                AppLanguage.MARATHI -> "मी मोबाईलचा $res"
+                AppLanguage.HINDI -> "मोबाइल का $res"
+                AppLanguage.ENGLISH -> "Muted audio: $res"
+            }
+        }
+        if (q.contains("फुल आवाज") || q.contains("max volume") || q.contains("पूर्ण आवाज")) {
+            val res = phoneControlManager.maxVolume()
+            return when (lang) {
+                AppLanguage.MARATHI -> "मी मोबाईलचा $res"
+                AppLanguage.HINDI -> "मोबाइल का $res"
+                AppLanguage.ENGLISH -> "Max volume set: $res"
+            }
+        }
+
+        // --- 3. CALLS & DIALER ---
+        if (q.contains("कॉल") || q.contains("call") || q.contains("फोन लावा") || q.contains("डायलर") || q.contains("dialer")) {
+            val digits = Regex("""\d{10,}""").find(q)?.value
+            phoneControlManager.openDialer(digits)
+            return when (lang) {
+                AppLanguage.MARATHI -> if (digits != null) "मी $digits क्रमांकासाठी फोन डायलर उघडला आहे 📞" else "मी मोबाईलचा फोन डायलर उघडला आहे 📞"
+                AppLanguage.HINDI -> if (digits != null) "मैंने $digits के लिए फोन डायलर खोल दिया है 📞" else "मैंने फोन डायलर खोल दिया है 📞"
+                AppLanguage.ENGLISH -> if (digits != null) "Opening dialer for $digits 📞" else "Opening phone dialer 📞"
+            }
+        }
+
+        // --- 4. WHATSAPP ---
+        if (q.contains("व्हॉट्सअ‍ॅप") || q.contains("whatsapp") || q.contains("व्हॉट्सॲप") || q.contains("व्हॉटसप")) {
+            phoneControlManager.openWhatsApp()
+            return when (lang) {
+                AppLanguage.MARATHI -> "मी मोबाईलमध्ये WhatsApp उघडले आहे 💬"
+                AppLanguage.HINDI -> "मैंने WhatsApp खोल दिया है 💬"
+                AppLanguage.ENGLISH -> "Opening WhatsApp 💬"
+            }
+        }
+
+        // --- 5. SMS / MESSAGING ---
+        if (q.contains("मेसेज") || q.contains("sms") || q.contains("संदेश") || q.contains("message")) {
+            phoneControlManager.openSms()
+            return when (lang) {
+                AppLanguage.MARATHI -> "मी मेसेजिंग (SMS) उघडले आहे ✉️"
+                AppLanguage.HINDI -> "मैंने मैसेजिंग ऐप खोल दिया है ✉️"
+                AppLanguage.ENGLISH -> "Opening Messaging app ✉️"
+            }
+        }
+
+        // --- 6. ALARM & TIMER ---
+        if (q.contains("अलार्म") || q.contains("alarm")) {
+            phoneControlManager.openAlarmClock()
+            return when (lang) {
+                AppLanguage.MARATHI -> "मी मोबाईलचे अलार्म घड्याळ उघडले आहे ⏰"
+                AppLanguage.HINDI -> "मैंने अलार्म क्लॉक खोल दिया है ⏰"
+                AppLanguage.ENGLISH -> "Opening Alarm Clock ⏰"
+            }
+        }
+        if (q.contains("टाइमर") || q.contains("timer")) {
+            val seconds = Regex("""\d+""").find(q)?.value?.toIntOrNull()?.let { it * 60 } ?: 300
+            phoneControlManager.setTimer(seconds)
+            return when (lang) {
+                AppLanguage.MARATHI -> "मी ${seconds / 60} मिनिटांचा टाइमर सेट केला आहे ⏳"
+                AppLanguage.HINDI -> "मैंने ${seconds / 60} मिनट का टाइमर सेट कर दिया है ⏳"
+                AppLanguage.ENGLISH -> "Set timer for ${seconds / 60} minutes ⏳"
+            }
+        }
+
+        // --- 7. CAMERA ---
+        if (q.contains("कॅमेरा") || q.contains("camera") || q.contains("फोटो काढा") || q.contains("photo")) {
+            phoneControlManager.openCamera()
+            return when (lang) {
+                AppLanguage.MARATHI -> "मी मोबाईलचा कॅमेरा उघडला आहे 📷"
+                AppLanguage.HINDI -> "मैंने मोबाइल का कैमरा खोल दिया है 📷"
+                AppLanguage.ENGLISH -> "Opening Camera 📷"
+            }
+        }
+
+        // --- 8. SYSTEM SETTINGS ---
+        if (q.contains("वायफाय") || q.contains("wifi") || q.contains("वाय-फाय")) {
+            phoneControlManager.openSettings(SettingsShortcut.WIFI)
+            return when (lang) {
+                AppLanguage.MARATHI -> "मी वाय-फाय (Wi-Fi) सेटिंग्ज उघडल्या आहेत 📶"
+                AppLanguage.HINDI -> "मैंने वाई-फाई सेटिंग्स खोल दी हैं 📶"
+                AppLanguage.ENGLISH -> "Opening Wi-Fi settings 📶"
+            }
+        }
+        if (q.contains("ब्लूटूथ") || q.contains("bluetooth")) {
+            phoneControlManager.openSettings(SettingsShortcut.BLUETOOTH)
+            return when (lang) {
+                AppLanguage.MARATHI -> "मी ब्लूटूथ सेटिंग्ज उघडल्या आहेत ᛒ"
+                AppLanguage.HINDI -> "मैंने ब्लूटूथ सेटिंग्स खोल दी हैं ᛒ"
+                AppLanguage.ENGLISH -> "Opening Bluetooth settings ᛒ"
+            }
+        }
+        if (q.contains("सेटिंग्ज") || q.contains("settings") || q.contains("सेटिंग")) {
+            phoneControlManager.openSettings(SettingsShortcut.MAIN)
+            return when (lang) {
+                AppLanguage.MARATHI -> "मी मोबाईलच्या मुख्य सेटिंग्ज उघडल्या आहेत ⚙️"
+                AppLanguage.HINDI -> "मैंने मोबाइल सेटिंग्स खोल दी हैं ⚙️"
+                AppLanguage.ENGLISH -> "Opening Phone Settings ⚙️"
+            }
+        }
+
+        // --- 9. MAPS & NAVIGATION ---
+        if (q.contains("नकाशा") || q.contains("maps") || q.contains("मॅप") || q.contains("रस्ता") || q.contains("दिशा")) {
+            phoneControlManager.openMaps()
+            return when (lang) {
+                AppLanguage.MARATHI -> "मी गुगल मॅप्स (नकाशा) उघडले आहे 🗺️"
+                AppLanguage.HINDI -> "मैंने गूगल मैप्स खोल दिया है 🗺️"
+                AppLanguage.ENGLISH -> "Opening Google Maps 🗺️"
+            }
+        }
+
+        // --- 10. YOUTUBE / SONGS ---
+        if (q.contains("युट्यूब") || q.contains("youtube") || q.contains("गाणे") || q.contains("गाणी") || q.contains("song")) {
+            phoneControlManager.openYouTube()
+            return when (lang) {
+                AppLanguage.MARATHI -> "मी YouTube उघडले आहे 📺"
+                AppLanguage.HINDI -> "मैंने YouTube खोल दिया है 📺"
+                AppLanguage.ENGLISH -> "Opening YouTube 📺"
+            }
+        }
+
+        // --- 11. FITNESS & STEPS COMMANDS ---
         val containsAdd = q.contains("जोडा") || q.contains("वाढवा") || q.contains("add") || q.contains("plus") || q.contains("+")
-        if (containsAdd) {
+        if (containsAdd && (q.contains("पावले") || q.contains("steps") || q.contains("कदम"))) {
             val digits = Regex("""\d+""").find(q)?.value?.toIntOrNull() ?: 500
             addSteps(digits)
             return when (lang) {
@@ -333,16 +513,14 @@ class ShivAiViewModel(application: Application) : AndroidViewModel(application) 
             }
         }
 
-        // 2. Steps inquiry
         if (q.contains("पावले") || q.contains("step") || q.contains("चाललो") || q.contains("कदम") || q.contains("walk")) {
             return when (lang) {
-                AppLanguage.MARATHI -> "आज तुम्ही $steps पावले चालला आहात. तुमचे दैनिक उद्दिष्ट $goal पावले आहे ($percent% पूर्ण झाले)."
-                AppLanguage.HINDI -> "आज आप $steps कदम चले हैं। आपका दैनिक लक्ष्य $goal कदम है ($percent% पूरा हुआ)।"
-                AppLanguage.ENGLISH -> "You have walked $steps steps today. Your daily goal is $goal steps ($percent% completed)."
+                AppLanguage.MARATHI -> "२४ तास ट्रॅकरनुसार आज तुम्ही $steps पावले चालला आहात. तुमचे दैनिक उद्दिष्ट $goal पावले आहे ($percent% पूर्ण झाले)."
+                AppLanguage.HINDI -> "24 घंटे ट्रैकर के अनुसार आज आप $steps कदम चले हैं। आपका दैनिक लक्ष्य $goal कदम है ($percent% पूरा हुआ)।"
+                AppLanguage.ENGLISH -> "According to 24h tracker, you have walked $steps steps today. Your daily goal is $goal steps ($percent% completed)."
             }
         }
 
-        // 3. Calories inquiry
         if (q.contains("कॅलरी") || q.contains("calorie") || q.contains("ऊर्जा") || q.contains("burn")) {
             return when (lang) {
                 AppLanguage.MARATHI -> "आज तुम्ही अंदाजे $cal kcal कॅलरीज बर्न केल्या आहेत. उत्तम प्रयत्न चालू ठेवा!"
@@ -351,7 +529,6 @@ class ShivAiViewModel(application: Application) : AndroidViewModel(application) 
             }
         }
 
-        // 4. Goal inquiry
         if (q.contains("ध्येय") || q.contains("उद्दिष्ट") || q.contains("goal") || q.contains("target") || q.contains("लक्ष्य")) {
             val remaining = (goal - steps).coerceAtLeast(0)
             return when (lang) {
@@ -361,7 +538,7 @@ class ShivAiViewModel(application: Application) : AndroidViewModel(application) 
             }
         }
 
-        // 5. Chest & Workout inquiry
+        // --- 12. WORKOUT COMMANDS ---
         if (q.contains("chest") || q.contains("छाती") || q.contains("डंबेल") || q.contains("dumbbell") || q.contains("पुश") || q.contains("pushup")) {
             selectTab(AppTab.WORKOUT)
             return when (lang) {
@@ -371,7 +548,7 @@ class ShivAiViewModel(application: Application) : AndroidViewModel(application) 
             }
         }
 
-        if (q.contains("वर्कआउट") || q.contains("workout")) {
+        if (q.contains("वर्कआउट") || q.contains("workout") || q.contains("व्यायाम")) {
             selectTab(AppTab.WORKOUT)
             return when (lang) {
                 AppLanguage.MARATHI -> "मी तुमच्यासाठी Workout टॅब उघडला आहे! येथे छाती, हात, पाठ, खांदे, पाय आणि अ‍ॅब्सचे डंबेल व विना-डंबेल ३-स्टेप व्यायाम उपलब्ध आहेत."
@@ -380,8 +557,7 @@ class ShivAiViewModel(application: Application) : AndroidViewModel(application) 
             }
         }
 
-        // 6. Fitness tip / Advice
-        if (q.contains("सल्ला") || q.contains("टिप") || q.contains("फिटनेस") || q.contains("व्यायाम") || q.contains("tip") || q.contains("advice")) {
+        if (q.contains("सल्ला") || q.contains("टिप") || q.contains("फिटनेस") || q.contains("tip") || q.contains("advice")) {
             return when (lang) {
                 AppLanguage.MARATHI -> "आजचा फिटनेस सल्ला: दररोज किमान ३० मिनिटे जलद गतीने चालल्याने हृदय निरोगी राहते आणि ऊर्जा वाढते. नियमित भरपूर पाणी प्या!"
                 AppLanguage.HINDI -> "आज का फिटनेस टिप: रोज़ाना कम से कम 30 मिनट तेज़ी से टहलने से दिल स्वस्थ रहता है। पर्याप्त पानी पिएं!"
@@ -389,21 +565,19 @@ class ShivAiViewModel(application: Application) : AndroidViewModel(application) 
             }
         }
 
-        // 6. Identity / Who are you
         if (q.contains("तू कोण") || q.contains("नाव काय") || q.contains("who are you") || q.contains("तुम कौन") || q.contains("shivai")) {
             return when (lang) {
-                AppLanguage.MARATHI -> "मी ShivAI आहे, तुमचा वैयक्तिक व्हॉइस असिस्टंट आणि फिटनेस मार्गदर्शक! मी तुम्हाला पावले मोजण्यात, व्यायाम सल्ल्यात आणि दैनंदिन प्रश्नांत मदत करतो."
-                AppLanguage.HINDI -> "मैं ShivAI हूँ, आपका पर्सनल वॉयस असिस्टेंट और फिटनेस गाइड! मैं कदम ट्रैक करने और फिटनेस सलाह में आपकी मदद करता हूँ।"
-                AppLanguage.ENGLISH -> "I am ShivAI, your personal AI voice assistant and fitness tracker! I help you track steps, stay active, and answer health questions."
+                AppLanguage.MARATHI -> "मी ShivAI आहे, तुमचा वैयक्तिक व्हॉइस असिस्टंट, फिटनेस ट्रॅकर आणि मोबाईल कंट्रोलर! मी २४ तास पावले मोजतो, फोन कंट्रोल्स चालवतो आणि वर्कआउट सल्ले देतो."
+                AppLanguage.HINDI -> "मैं ShivAI हूँ, आपका पर्सनल वॉयस असिस्टेंट, फिटनेस ट्रैकर और मोबाइल कंट्रोलर! मैं 24 घंटे कदम ट्रैक करता हूँ और फोन कंट्रोल्स संभालता हूँ।"
+                AppLanguage.ENGLISH -> "I am ShivAI, your 24/7 personal fitness tracker, voice assistant, and phone controller! I can control device torch, sound, calls, and track steps continuously."
             }
         }
 
-        // 7. Greetings
         if (q == "नमस्कार" || q == "नमस्ते" || q == "हाय" || q == "हॅलो" || q == "hello" || q == "hi" || q == "hey") {
             return when (lang) {
-                AppLanguage.MARATHI -> "नमस्कार ${_profile.value.name}! मी ShivAI. सांगा आज मी तुम्हाला कशी मदत करू?"
-                AppLanguage.HINDI -> "नमस्ते ${_profile.value.name}! मैं ShivAI हूँ। बताइए आज मैं आपकी कैसे मदद करूँ?"
-                AppLanguage.ENGLISH -> "Hello ${_profile.value.name}! I am ShivAI. How can I assist you with your fitness and daily routine today?"
+                AppLanguage.MARATHI -> "नमस्कार ${_profile.value.name}! मी ShivAI. २४ तास फिटनेस ट्रॅकिंग व मोबाईल कंट्रोल्स चालू आहेत. सांगा कशी मदत करू?"
+                AppLanguage.HINDI -> "नमस्ते ${_profile.value.name}! मैं ShivAI हूँ। 24 घंटे ट्रैकिंग और मोबाइल कंट्रोल्स तैयार हैं। बताइए कैसे मदद करूँ?"
+                AppLanguage.ENGLISH -> "Hello ${_profile.value.name}! I am ShivAI with 24/7 background tracking and device controls ready. How can I help?"
             }
         }
 
@@ -412,9 +586,9 @@ class ShivAiViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun getGracefulFallbackReply(query: String, lang: AppLanguage): String {
         return when (lang) {
-            AppLanguage.MARATHI -> "तुमच्या प्रश्नासाठी धन्यवाद! निरोगी राहण्यासाठी दररोज चालणे, संतुलित आहार आणि पुरेशी झोप आवश्यक आहे. मी नेहमी तुमच्या फिटनेस प्रवासात सोबत आहे."
-            AppLanguage.HINDI -> "आपके सवाल के लिए धन्यवाद! स्वस्थ रहने के लिए नियमित व्यायाम और संतुलित आहार बहुत जरूरी है। मैं आपकी फिटनेस में हमेशा साथ हूँ।"
-            AppLanguage.ENGLISH -> "Thank you for asking! For a healthy lifestyle, stay consistent with daily steps, balanced nutrition, and good rest. I'm always here to guide you."
+            AppLanguage.MARATHI -> "तुमच्या प्रश्नासाठी धन्यवाद! निरोगी राहण्यासाठी दररोज चालणे, संतुलित आहार आणि व्यायाम आवश्यक आहे. मोबाईल कंट्रोल्ससाठी 'टॉर्च', 'आवाज', 'कॉल' किंवा 'कॅमेरा' बोला."
+            AppLanguage.HINDI -> "आपके सवाल के लिए धन्यवाद! स्वस्थ रहने के लिए नियमित व्यायाम बहुत जरूरी है। मोबाइल कंट्रोल्स के लिए 'टॉर्च', 'आवाज', 'कॉल' या 'कैमरा' बोलें।"
+            AppLanguage.ENGLISH -> "Thank you! For a healthy routine, keep walking daily. For phone controls, simply say 'Torch', 'Volume up', 'Call', or 'Camera'."
         }
     }
 
@@ -456,17 +630,14 @@ class ShivAiViewModel(application: Application) : AndroidViewModel(application) 
             return
         }
 
-        // 2. Open-ended queries call Firebase AI Logic (Gemini 3.8 Flash)
-        viewModelScope.launch {
-            _statusMessage.value = "विचार करत आहे..."
-            _aiStatus.value = AiUiStatus.Thinking
+        // 2. Call Firebase AI Logic (gemini-3.8-flash) streaming
+        _statusMessage.value = "विचार करत आहे..."
+        _aiStatus.value = AiUiStatus.Thinking
 
-            val lang = _profile.value.language.code
+        viewModelScope.launch {
             val prompt = """
-                तू 'ShivAI' नावाचा पर्सनल असिस्टंट आणि फिटनेस मार्गदर्शक आहेस.
-                युझरने निवडलेली भाषा: $lang
-                जर भाषा mr-IN असेल तर मराठीत, hi-IN असेल तर हिंदीत आणि en-US असेल तर इंग्लिशमध्ये उत्तर दे.
-                युझरशी अत्यंत आदराने, उत्साहाने आणि मित्रासारखे बोल.
+                तू ShivAI आहेस - एक मराठी/भारतीय व्हॉइस असिस्टंट, फिटनेस ट्रॅकर आणि मोबाईल कंट्रोलर.
+                भाषा: ${_profile.value.language.name}
                 उत्तर २ ते ३ वाक्यांत संक्षिप्त, प्रभावी आणि स्पष्ट दे, जेणेकरून ते आवाजात ऐकणे सोपे होईल.
                 युझरची आजची पावले: ${_todaySteps.value} (दैनिक उद्दिष्ट: ${_profile.value.dailyGoal}).
                 युझरचे नाव: ${_profile.value.name}.
@@ -493,7 +664,6 @@ class ShivAiViewModel(application: Application) : AndroidViewModel(application) 
             }
 
             try {
-                // Realistic timeout window for model inference
                 withTimeout(45_000L) {
                     generativeModel.generateContentStream(prompt).collect { chunk ->
                         val chunkText = chunk.text.orEmpty()
@@ -533,7 +703,7 @@ class ShivAiViewModel(application: Application) : AndroidViewModel(application) 
 
     override fun onCleared() {
         super.onCleared()
-        stepTracker.stopTracking()
+        // Note: StepTrackingService continues in background for true 24/7 continuous tracking!
         speechHelper.stopListening()
         ttsHelper.shutdown()
     }
